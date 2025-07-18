@@ -280,7 +280,25 @@ namespace AtlasHelper
         {
             finalMapsToRun.Clear();
 
-            var allMapItems = GetAllInventoryAndMapDeviceMapsAlways();
+            List<NormalInventoryItem> allMapItems;
+
+            if (GameController.Game.IngameState.IngameUi.MapDeviceWindow.IsVisible && globalMapCache.Count > 0)
+            {            
+                var visibleItems = GetAllInventoryAndMapDeviceMapsAlways();
+                var cachedKeys = globalMapCache.Values.Select(e => new { e.MapAreaName, e.MapTier }).ToList();
+                allMapItems = visibleItems.Where(item =>
+                {
+                    var entity = item?.Item;
+                    if (entity == null) return false;
+                    var mapComponent = entity.GetComponent<Map>();
+                    if (mapComponent == null) return false;
+                    return cachedKeys.Any(k => k.MapAreaName == mapComponent.Area?.Name && k.MapTier == mapComponent.Tier);
+                }).ToList();
+            }
+            else
+            {
+                allMapItems = GetAllInventoryAndMapDeviceMapsAlways();
+            }
 
             var mapsThatGiveCompletion = new List<(AtlasMap, int, RectangleF)>();
             var mapsThatWontGiveCompletion = new List<(AtlasMap, int, RectangleF)>();
@@ -831,20 +849,17 @@ namespace AtlasHelper
             var ingameState = GameController.Game.IngameState;
             var allItems = new List<NormalInventoryItem>();
 
-            // Player inventory
             if (ingameState.IngameUi.InventoryPanel.IsVisible)
             {
                 var inventoryItems = ingameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
                 allItems.AddRange(inventoryItems);
 
-                // Optionally add stash items if you want to include them as well
                 if (ingameState.IngameUi.StashElement.IsVisible && ingameState.IngameUi.StashElement.VisibleStash != null)
                 {
                     allItems.AddRange(ingameState.IngameUi.StashElement.VisibleStash.VisibleInventoryItems);
                 }
             }
 
-            // Map device
             var mapDeviceSlots = ingameState.IngameUi.MapDeviceWindow.GetChildAtIndex(0).GetChildAtIndex(1);
             if (mapDeviceSlots.IsVisible)
             {
