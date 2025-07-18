@@ -280,25 +280,17 @@ namespace AtlasHelper
         {
             finalMapsToRun.Clear();
 
-            List<NormalInventoryItem> allMapItems;
+            var visibleItems = GetAllInventoryAndMapDeviceMapsAlways();
+            var cachedKeys = globalMapCache.Values.Select(e => new { e.MapAreaName, e.MapTier }).ToList();
 
-            if (GameController.Game.IngameState.IngameUi.MapDeviceWindow.IsVisible && globalMapCache.Count > 0)
-            {            
-                var visibleItems = GetAllInventoryAndMapDeviceMapsAlways();
-                var cachedKeys = globalMapCache.Values.Select(e => new { e.MapAreaName, e.MapTier }).ToList();
-                allMapItems = visibleItems.Where(item =>
-                {
-                    var entity = item?.Item;
-                    if (entity == null) return false;
-                    var mapComponent = entity.GetComponent<Map>();
-                    if (mapComponent == null) return false;
-                    return cachedKeys.Any(k => k.MapAreaName == mapComponent.Area?.Name && k.MapTier == mapComponent.Tier);
-                }).ToList();
-            }
-            else
+            var allMapItems = visibleItems.Where(item =>
             {
-                allMapItems = GetAllInventoryAndMapDeviceMapsAlways();
-            }
+                var entity = item?.Item;
+                if (entity == null) return false;
+                var mapComponent = entity.GetComponent<Map>();
+                if (mapComponent == null) return false;
+                return cachedKeys.Any(k => k.MapAreaName == mapComponent.Area?.Name && k.MapTier == mapComponent.Tier);
+            }).ToList();
 
             var mapsThatGiveCompletion = new List<(AtlasMap, int, RectangleF)>();
             var mapsThatWontGiveCompletion = new List<(AtlasMap, int, RectangleF)>();
@@ -1672,6 +1664,8 @@ namespace AtlasHelper
             }
             if (Settings.EnableDiagonalProgressionHighlight)
             {
+                var cachedKeys = globalMapCache.Values.Select(e => new { e.MapAreaName, e.MapTier }).ToList();
+
                 foreach (var item in items)
                 {
                     var entity = item?.Item;
@@ -1682,6 +1676,9 @@ namespace AtlasHelper
                     var areaName = mapComponent.Area?.Name;
                     var tier = mapComponent.Tier;
 
+                    if (!cachedKeys.Any(k => k.MapAreaName == areaName && k.MapTier == tier))
+                        continue;
+
                     var match = finalMapsToRun.FirstOrDefault(m =>
                         m.Item1 != null &&
                         m.Item1.WorldArea != null &&
@@ -1691,7 +1688,7 @@ namespace AtlasHelper
                     if (match.Item1 == null)
                         continue;
 
-                    var drawRect = match.Item3; 
+                    var drawRect = match.Item3;
 
                     if (disableOnHover && disableOnHoverRect.Intersects(drawRect))
                         continue;
